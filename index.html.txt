@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Go-Live Health Dashboard</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f3;color:#1a1a1a;font-size:14px}
+.wrap{max-width:780px;margin:0 auto;padding:2rem 1rem}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.header h1{font-size:20px;font-weight:600}
+.header p{font-size:12px;color:#888;margin-top:2px}
+.btn{background:white;border:0.5px solid #ccc;border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer;font-family:inherit}
+.btn:hover{background:#f0f0ee}
+.btn:disabled{opacity:0.5;cursor:default}
+.btn-row{display:flex;gap:8px}
+.filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.filters input{flex:1;min-width:160px;border:0.5px solid #ccc;border-radius:8px;padding:7px 12px;font-size:13px;font-family:inherit;outline:none;background:white}
+.filters input:focus{border-color:#999}
+.fbtn{background:transparent;border:0.5px solid #ccc;border-radius:8px;padding:5px 14px;font-size:12px;cursor:pointer;font-family:inherit}
+.fbtn.active{background:#eee;font-weight:500}
+.card{background:white;border:0.5px solid #e0e0de;border-radius:12px;padding:14px 18px;cursor:pointer;margin-bottom:10px;transition:border-color 0.15s}
+.card:hover{border-color:#aaa}
+.card.debook{border-color:#f09595}
+.card.debook:hover{border-color:#e24b4a}
+.card-name{font-weight:500;font-size:15px;display:flex;align-items:center;gap:8px}
+.card-meta{font-size:12px;color:#888;margin-top:3px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.badge{padding:1px 8px;border-radius:99px;font-size:11px}
+.b2b{background:#eeedfe;color:#534ab7}
+.newc{background:#e6f1fb;color:#185fa5}
+.deb{background:#fcebeb;color:#a32d2d;font-size:10px}
+.hint{font-size:12px;color:#888}
+.hint.warn{color:#854f0b}
+.prog-bg{background:#e5e7eb;border-radius:999px;height:8px;overflow:hidden;flex:1}
+.prog-fill{height:100%;border-radius:999px;transition:width 0.4s}
+.dhead{background:white;border:0.5px solid #e0e0de;border-radius:12px;padding:1.25rem;margin-bottom:14px}
+.mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.metric{border-radius:8px;padding:10px 12px}
+.metric label{font-size:11px;color:#888;display:block;margin-bottom:4px}
+.metric span{font-size:20px;font-weight:500}
+.clist{background:white;border:0.5px solid #e0e0de;border-radius:12px;padding:1rem 1.25rem}
+.clist h3{font-size:14px;font-weight:500;margin-bottom:12px}
+.trow{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:0.5px solid #f0f0ee;cursor:pointer}
+.trow:last-child{border-bottom:none}
+.trow.busy{opacity:0.5;pointer-events:none}
+.chk{width:18px;height:18px;border-radius:4px;border:1.5px solid #ccc;background:transparent;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.chk.on{background:#639922;border:none}
+.tlabel{flex:1;font-size:13px}
+.tlabel.done{color:#aaa;text-decoration:line-through}
+.twt{font-size:11px;color:#aaa;min-width:40px;text-align:right}
+.setup{text-align:center;padding:1.5rem 0}
+.setup p{font-size:13px;color:#888;margin-bottom:12px}
+.loading{color:#888;font-size:13px;padding:2rem 0;text-align:center}
+.wp{background:#f5f5f3;border:0.5px solid #e0e0de;border-radius:12px;padding:1rem 1.25rem;margin-bottom:16px}
+.wp h3{font-size:14px;font-weight:500;margin-bottom:12px}
+.wtabs{display:flex;gap:8px;margin-bottom:12px}
+.wrow{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.wrow span{flex:1;font-size:13px}
+.wrow input[type=range]{width:100px}
+.wval{font-size:13px;font-weight:500;min-width:18px;text-align:right}
+#back{margin-bottom:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="app">
+    <div class="header">
+      <div><h1>Go-live health dashboard</h1><p>March – May 2026 · Live Asana data</p></div>
+      <div class="btn-row">
+        <button class="btn" onclick="toggleW()">Edit weights</button>
+        <button class="btn" onclick="init()">↺ Refresh</button>
+      </div>
+    </div>
+    <div id="wp" class="wp" style="display:none">
+      <h3>Task weights (1–10)</h3>
+      <div class="wtabs">
+        <button class="fbtn active" id="wt-nc" onclick="switchWT('nc')">New client</button>
+        <button class="fbtn" id="wt-b2b" onclick="switchWT('b2b')">B2B</button>
+      </div>
+      <div id="wrows"></div>
+    </div>
+    <div id="dash">
+      <div class="filters">
+        <input type="text" id="srch" placeholder="Search clients..." oninput="renderList()"/>
+        <button class="fbtn active" id="f-All" onclick="setF('All')">All</button>
+        <button class="fbtn" id="f-New" onclick="setF('New')">New</button>
+        <button class="fbtn" id="f-B2B" onclick="setF('B2B')">B2B</button>
+      </div>
+      <div id="list"><div class="loading">Loading clients from Asana...</div></div>
+    </div>
+    <div id="det" style="display:none">
+      <button class="btn" id="back" onclick="goBack()">← Back</button>
+      <div id="detc"></div>
+    </div>
+  </div>
+</div>
+<script>
+const API = "/api/asana";
+const PROJECT_ID = "1204989172185092";
+const PKG_FIELD = "1210696618096750";
+const GL_FIELD = "1211590050412697";
+const VP_FIELD = "1204990658751105";
+const DEBOOK_GID = "1209225331518753";
+const SECTIONS = {"March 2026":"1212091088978746","April 2026":"1212091088978747","May 2026":"1212091088978748"};
+
+const NC = [
+  {k:"nc1",l:"Kick off call completed",w:8},
+  {k:"nc2",l:"SOP shared",w:6},
+  {k:"nc3",l:"KYC form completed",w:9},
+  {k:"nc4",l:"Confirmed payment method adoption vs HubSpot",w:9},
+  {k:"nc5",l:"All accounts connected to Stripe",w:10},
+  {k:"nc6",l:"# of Restricted Soon resolved (any reason)",w:8},
+  {k:"nc7",l:"Portal configured",w:9},
+  {k:"nc8",l:"Non-rack pricing assigned",w:7},
+  {k:"nc9",l:"Double check portal config upon launch",w:8},
+  {k:"nc10",l:"Monitor payment activity post portal launch",w:7},
+];
+const B2B = [
+  {k:"b1",l:"Sales → Imp. handoff call",w:8},
+  {k:"b2",l:"Confirmed payment method adoption vs HubSpot",w:9},
+  {k:"b3",l:"Transition date identified",w:8},
+  {k:"b4",l:"SOP shared",w:6},
+  {k:"b5",l:"KYC form completed",w:9},
+  {k:"b6",l:"Tags received",w:7},
+  {k:"b7",l:"Final review of comms template",w:7},
+  {k:"b8",l:"Comms XN built",w:8},
+  {k:"b9",l:"Comms sent",w:9},
+  {k:"b10",l:"All accounts connected to Stripe",w:10},
+  {k:"b11",l:"# of Restricted Soon resolved (any reason)",w:8},
+  {k:"b12",l:"Portal configured",w:9},
+  {k:"b13",l:"Non-rack pricing assigned",w:7},
+  {k:"b14",l:"Double check portal config upon launch",w:8},
+  {k:"b15",l:"Monitor payment activity post launch",w:7},
+];
+
+let clients=[],filterType="All",cur=null,subs=[],wtab="nc";
+let W={nc:Object.fromEntries(NC.map(t=>[t.k,t.w])),b2b:Object.fromEntries(B2B.map(t=>[t.k,t.w]))};
+
+async function asana(path,method,body){
+  const r=await fetch(API,{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({path,method:method||"GET",body:body||null})
+  });
+  return r.json();
+}
+
+async function init(){
+  document.getElementById("list").innerHTML='<div class="loading">Loading clients from Asana...</div>';
+  clients=[];
+  for(const[name,sid] of Object.entries(SECTIONS)){
+    const d=await asana(`/sections/${sid}/tasks?opt_fields=gid,name,completed,custom_fields,subtasks`);
+    if(!d.data) continue;
+    for(const t of d.data){
+      if(t.completed) continue;
+      const pkg=(t.custom_fields||[]).find(f=>f.gid===PKG_FIELD);
+      const gl=(t.custom_fields||[]).find(f=>f.gid===GL_FIELD);
+      const vp=(t.custom_fields||[]).find(f=>f.gid===VP_FIELD);
+      clients.push({
+        gid:t.gid,name:t.name,
+        isB2B:pkg?.enum_value?.name==="B2B",
+        isDebook:vp?.enum_value?.gid===DEBOOK_GID,
+        goLiveDate:gl?.date_value?.date||null,
+        vpStatus:vp?.enum_value?.name||null,
+        subtaskCount:(t.subtasks||[]).length,
+        section:name
+      });
+    }
+  }
+  renderList();
+}
+
+function days(d){if(!d)return null;return Math.ceil((new Date(d)-new Date())/86400000)}
+function um(d){if(d===null)return 1;if(d<=0)return 2;if(d<=7)return 1.8;if(d<=14)return 1.5;if(d<=30)return 1.2;return 1}
+function score(tasks,subs,gl,wkey){
+  if(!subs||!subs.length)return null;
+  const m=um(days(gl));let tot=0,earn=0;
+  for(const t of tasks){const w=(W[wkey][t.k]||t.w)*m;const s=subs.find(s=>s.name===t.l);tot+=w;if(s?.completed)earn+=w;}
+  return tot===0?0:Math.round(earn/tot*100);
+}
+function col(s){
+  if(s===null)return{bar:"#b4b2a9",txt:"#5f5e5a",bg:"#f1efe8"};
+  if(s>=80)return{bar:"#639922",txt:"#3b6d11",bg:"#eaf3de"};
+  if(s>=50)return{bar:"#ef9f27",txt:"#854f0b",bg:"#faeeda"};
+  return{bar:"#e24b4a",txt:"#a32d2d",bg:"#fcebeb"};
+}
+function slabel(s){if(s===null)return"Not set up";if(s>=80)return"On track";if(s>=50)return"At risk";return"Critical"}
+function dlabel(d){if(d===null)return"No date set";if(d<0)return`${Math.abs(d)}d overdue`;if(d===0)return"Go-live today";return`${d}d to go-live`}
+
+function setF(f){
+  filterType=f;
+  ["All","New","B2B"].forEach(x=>document.getElementById("f-"+x).classList.toggle("active",x===f));
+  renderList();
+}
+
+function renderList(){
+  const q=document.getElementById("srch").value.toLowerCase();
+  const list=clients.filter(c=>{
+    if(filterType==="B2B"&&!c.isB2B)return false;
+    if(filterType==="New"&&c.isB2B)return false;
+    if(q&&!c.name.toLowerCase().includes(q))return false;
+    return true;
+  }).sort((a,b)=>(days(a.goLiveDate)??9999)-(days(b.goLiveDate)??9999));
+
+  if(!list.length){document.getElementById("list").innerHTML='<div class="loading">No clients found.</div>';return;}
+  document.getElementById("list").innerHTML=list.map(c=>`
+    <div class="card${c.isDebook?" debook":""}" onclick="openClient('${c.gid}')">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="flex:1">
+          <div class="card-name">${c.name}${c.isDebook?'<span class="badge deb">Debook</span>':''}</div>
+          <div class="card-meta">
+            <span class="badge ${c.isB2B?"b2b":"newc"}">${c.isB2B?"B2B":"New"}</span>
+            <span>${dlabel(days(c.goLiveDate))}</span>
+            ${c.vpStatus?`<span style="color:#bbb">· ${c.vpStatus}</span>`:""}
+          </div>
+        </div>
+        <div class="hint${c.subtaskCount?"":" warn"}">${c.subtaskCount?c.subtaskCount+" subtasks":"No checklist"}</div>
+      </div>
+    </div>`).join("");
+}
+
+async function openClient(gid){
+  cur=clients.find(c=>c.gid===gid);
+  document.getElementById("dash").style.display="none";
+  document.getElementById("det").style.display="block";
+  document.getElementById("detc").innerHTML='<div class="loading">Loading checklist from Asana...</div>';
+  const d=await asana(`/tasks/${gid}/subtasks?opt_fields=gid,name,completed`);
+  subs=d.data||[];
+  renderDet();
+}
+
+function renderDet(){
+  const c=cur,tasks=c.isB2B?B2B:NC,wkey=c.isB2B?"b2b":"nc";
+  const sc=score(tasks,subs,c.goLiveDate,wkey),cl=col(sc);
+  const done=subs.filter(s=>s.completed).length,has=subs.length>0,d=days(c.goLiveDate);
+  document.getElementById("detc").innerHTML=`
+    <div class="dhead">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+        <div>
+          <div style="font-size:18px;font-weight:600">${c.name}</div>
+          <div class="card-meta" style="margin-top:4px">
+            <span class="badge ${c.isB2B?"b2b":"newc"}">${c.isB2B?"B2B":"New client"}</span>
+            ${c.isDebook?'<span class="badge deb">⚑ Debook deal</span>':""}
+            <span>${dlabel(d)}</span>
+            ${c.vpStatus?`<span style="color:#bbb">· ${c.vpStatus}</span>`:""}
+          </div>
+        </div>
+      </div>
+      <div class="mgrid">
+        <div class="metric" style="background:${cl.bg}"><label>Health score</label><span style="color:${cl.txt}">${sc!==null?sc+"%":"—"}</span></div>
+        <div class="metric" style="background:#f5f5f3"><label>Tasks done</label><span>${has?done+"/"+tasks.length:"—"}</span></div>
+        <div class="metric" style="background:${cl.bg}"><label>Status</label><span style="color:${cl.txt};font-size:15px">${slabel(sc)}</span></div>
+      </div>
+      ${sc!==null?`<div class="prog-bg"><div class="prog-fill" style="width:${sc}%;background:${cl.bar}"></div></div>`:""}
+    </div>
+    <div class="clist">
+      <h3>Checklist</h3>
+      ${!has?`<div class="setup"><p>No checklist subtasks found in Asana for this client.</p><button class="btn" onclick="setupCL()">Set up checklist in Asana</button></div>`
+      :tasks.map(t=>{
+        const s=subs.find(s=>s.name===t.l),chk=s?.completed||false,wv=W[wkey][t.k]||t.w;
+        return`<div class="trow" onclick="toggle('${s?.gid||""}',${chk})">
+          <div class="chk${chk?" on":""}">${chk?'<svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4.5L4 7.5L10 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>':""}</div>
+          <div class="tlabel${chk?" done":""}">${t.l}</div>
+          <div class="twt">wt: ${wv}</div>
+        </div>`;}).join("")}
+    </div>`;
+}
+
+async function setupCL(){
+  const tasks=cur.isB2B?B2B:NC;
+  const btn=document.querySelector(".setup .btn");
+  if(btn){btn.disabled=true;btn.textContent="Creating subtasks in Asana...";}
+  for(const t of tasks){
+    await asana("/tasks","POST",{data:{name:t.l,parent:cur.gid}});
+  }
+  const d=await asana(`/tasks/${cur.gid}/subtasks?opt_fields=gid,name,completed`);
+  subs=d.data||[];
+  cur.subtaskCount=subs.length;
+  renderDet();
+}
+
+async function toggle(gid,was){
+  if(!gid)return;
+  document.querySelectorAll(".trow").forEach(r=>r.classList.add("busy"));
+  await asana(`/tasks/${gid}`,"PUT",{data:{completed:!was}});
+  subs=subs.map(s=>s.gid===gid?{...s,completed:!was}:s);
+  renderDet();
+}
+
+function goBack(){
+  document.getElementById("det").style.display="none";
+  document.getElementById("dash").style.display="block";
+  cur=null;subs=[];
+}
+
+function toggleW(){
+  const p=document.getElementById("wp");
+  p.style.display=p.style.display==="none"?"block":"none";
+  renderW();
+}
+function switchWT(t){
+  wtab=t;
+  document.getElementById("wt-nc").classList.toggle("active",t==="nc");
+  document.getElementById("wt-b2b").classList.toggle("active",t==="b2b");
+  renderW();
+}
+function renderW(){
+  const tasks=wtab==="nc"?NC:B2B;
+  document.getElementById("wrows").innerHTML=tasks.map(t=>`
+    <div class="wrow">
+      <span>${t.l}</span>
+      <input type="range" min="1" max="10" step="1" value="${W[wtab][t.k]||t.w}" oninput="upW('${wtab}','${t.k}',this.value,this.nextElementSibling)"/>
+      <span class="wval">${W[wtab][t.k]||t.w}</span>
+    </div>`).join("");
+}
+function upW(tab,k,v,el){W[tab][k]=+v;el.textContent=v;}
+
+init();
+</script>
+</body>
+</html>
