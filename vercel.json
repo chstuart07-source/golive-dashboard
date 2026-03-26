@@ -1,5 +1,11 @@
 {
-  "rewrites": [
-    { "source": "/api/asana", "destination": "/api/asana.js" }
+  "version": 2,
+  "builds": [
+    { "src": "index.html", "use": "@vercel/static" },
+    { "src": "api/asana.js", "use": "@vercel/node" }
+  ],
+  "routes": [
+    { "src": "/api/asana", "dest": "/api/asana.js" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
