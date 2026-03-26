@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/api/asana", "destination": "/api/asana.js" }
+  ]
+}
